@@ -5,18 +5,16 @@ import { Link, useNavigate } from 'react-router-dom'
 import * as yup from 'yup'
 import { useRegisterUserMutation } from '../provider/queries/Auth.query'
 import { toast } from 'sonner'
-import ReCAPTCHA from 'react-google-recaptcha'
+
 
 const Register = () => {
 
   const [registerUser,registerUserResponse] = useRegisterUserMutation()
 
   const navigate  = useNavigate()
-  //@ts-ignore
-  const RecaptchaRef = useRef<any>();
+  
 
   type User = {
-    token:string;
     name: string,
     email: string,
     password: string
@@ -24,7 +22,6 @@ const Register = () => {
 
   const initialValues: User = {
     name: '',
-    token:'',
     email: '',
     password: ''
   }
@@ -36,36 +33,32 @@ const Register = () => {
   })
 
   const OnSubmitHandler = async (e: User, { resetForm }: any) => {
-        // console.log({e});
+  try {
+    const { data, error }: any = await registerUser(e)
 
-        try {
-          const {data,error }:any = await registerUser(e)
-       
-          
-              if(error){
-                toast.error(error.data.message);
-                return
-                
-              }
+    if (error) {
+      // Safe error handling - check if error.data exists
+      const errorMessage = error?.data?.message || error?.message || "Registration failed"
+      toast.error(errorMessage);
+      return
+    }
 
-              console.log(data,error);
+    console.log(data, error);
 
-
-              localStorage.setItem("token",data.token);
-
-              
-
-          resetForm()
-          navigate("/")
-        } catch (error:any) {
-            // toast
-          toast.error(error.message);
-              
-          }finally{
-          RecaptchaRef.current.reset();
-          }
-        
+    if (data?.token) {
+      localStorage.setItem("token", data.token);
+      resetForm()
+      navigate("/")
+    } else {
+      toast.error("Registration failed - no token received");
+    }
+    
+  } catch (error: any) {
+    // Safe catch error handling
+    const errorMessage = error?.message || "An unexpected error occurred";
+    toast.error(errorMessage);
   }
+}
 
   return (
     <div className='min-h-screen flex items-center justify-center w-full bg-[#eee]'>
@@ -91,18 +84,12 @@ const Register = () => {
                 <ErrorMessage component={'p'} className='text-red-500 text-sm ' name='password' />
 
               </div>
+             
               <div className="mb-3 py-1">
-                <ReCAPTCHA
-                  ref={RecaptchaRef}
-                  sitekey={import.meta.env.VITE_SITE_KEY}
-                  onChange={(e) => { setFieldValue('token', e) }}
-                />
-              </div>
-              <div className="mb-3 py-1">
-                <Button disabled={!values.token} loading={registerUserResponse.isLoading} raised type='submit'   className='w-full bg-red-500 text-white py-3 px-2 flex items-center justify-center'>Submit
-
-                </Button>
-              </div>
+                <Button loading={registerUserResponse.isLoading} raised type='submit' className='w-full bg-red-500 text-white py-3 px-2 flex items-center justify-center'>
+                  Submit
+                  </Button>
+                  </div>
               <div className="mb-3 py-1 flex items-center justify-end">
                 <p className="inline-flex items-center gap-x-1">   Already Have An Account?<Link className='font-semibold' to={'/login'}>Login</Link></p>
               </div>

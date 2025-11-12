@@ -5,7 +5,6 @@ import { Link, useNavigate } from 'react-router-dom'
 import * as yup from 'yup'
 import { useLoginUserMutation } from '../provider/queries/Auth.query'
 import { toast } from 'sonner'
-import ReCAPTCHA from "react-google-recaptcha";
 const Login = () => {
 const [LoginUser,LoginUserResponse] = useLoginUserMutation()
 const navigate = useNavigate()
@@ -15,8 +14,7 @@ const navigate = useNavigate()
     password:string
   }
 
-  //@ts-ignore
-  const RecaptchaRef = useRef<any>();
+ 
 
   const initialValues: User={
     token: '',
@@ -53,7 +51,7 @@ const navigate = useNavigate()
       toast.error(error.message);
 
     }finally{
-      RecaptchaRef.current.reset();
+      
     }
   }
 
@@ -77,13 +75,6 @@ const navigate = useNavigate()
                   <Field name='password' id='password' className='w-full outline-none py-3 px-2 border-[.1px] border-zinc-400 rounded-lg' placeholder='*****' />
                   <ErrorMessage component={'p'} className='text-red-500 text-sm ' name='password' />
 
-                </div>
-                <div className="mb-3 py-1">
-                  <ReCAPTCHA
-                    ref={RecaptchaRef}
-                    sitekey={import.meta.env.VITE_SITE_KEY}
-                    onChange={(e) => { setFieldValue('token',e)}}
-                  />
                 </div>
                 <div className="mb-3 py-1 flex items-center justify-center">
                   <Button disabled={!values.token} loading={LoginUserResponse.isLoading} className='w-full bg-red-500 text-white py-3 px-2 flex items-center justify-center'>Submit
