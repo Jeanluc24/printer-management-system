@@ -13,9 +13,9 @@ app.use(express.urlencoded({extended:false}))
 
 app.use("/api/v1",require("./routes"))
 
-app.use("*",(req,res)=>{
-    throw new ApiError(404,"page not found")
-})
+app.use("*", (req, res, next) => {
+    next(new ApiError(404, "Page not found"));
+});
 
 app.use(ErrorHandling)
 module.exports  =app
