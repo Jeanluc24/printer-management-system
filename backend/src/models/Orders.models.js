@@ -1,38 +1,41 @@
-const mongoose = require("mongoose")
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/db.config');
 
-const Schema = new mongoose.Schema({
-            user:{
-                type:mongoose.Schema.Types.ObjectId,
-                ref:'user',
-                required:true
-            }   , 
-            consumer:{
-   type:mongoose.Schema.Types.ObjectId,
-                ref:'Consumer',
-                required:true
-            }  ,
-                    items:{
-                        type:[
-                            {
-                                name:{
-                                    type:String,
-                                    trim:true
-                                },
-                                price:{
-                                    type:Number
-                                }
-                            }
-                        ]
-                    } ,
-    
-            isActive:{
-                type:Boolean,
-                default:true
-            }
+const Order = sequelize.define('Order', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    field: 'user_id'
+  },
+  consumerId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'consumers',
+      key: 'id'
+    },
+    field: 'consumer_id'
+  },
+  items: {
+    type: DataTypes.JSON, // SQLite will store this as JSON string
+    defaultValue: []
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  }
+}, {
+  tableName: 'orders',
+  timestamps: true
+});
 
-},{timestamps:true})
-
-
-const model = mongoose.model("Order",Schema)
-
-module.exports = model
+module.exports = Order;

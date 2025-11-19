@@ -1,12 +1,22 @@
-const { default: mongoose } = require("mongoose");
-const { PUBLIC_DATA } = require("../../constant");
+const { Sequelize } = require('sequelize');
 
-exports.ConnectDB = async()=>{
-    try {
-        await mongoose.connect(PUBLIC_DATA.mongo_uri)
-        console.log(`the app is connect with ${mongoose.connection.host}`);
-    } catch (error) {
-            mongoose.disconnect();
-            process.exit(1)
-    }
-}
+const sequelize = new Sequelize({
+  dialect: 'sqlite',
+  storage: './database.sqlite',
+  logging: false
+});
+
+const ConnectDB = async () => {
+  try {
+    await sequelize.authenticate();
+    await sequelize.sync({ alter: true });
+    console.log('✅ Database connected successfully');
+  } catch (error) {
+    console.error('❌ Database connection failed:', error);
+    process.exit(1);
+  }
+};
+
+// Export both ConnectDB and sequelize
+module.exports = sequelize;
+module.exports.ConnectDB = ConnectDB;

@@ -1,94 +1,102 @@
-const httpStatus = require("http-status")
-const { OrdersModel } = require("../models")
-const ApiError = require("../utils/ApiError")
+const httpStatus = require("http-status");
+const { OrdersModel, ConsumerModel, UserModel } = require("../models");
+const ApiError = require("../utils/ApiError");
+const { Op } = require("sequelize");
 
-class OrderService{
-        static async createOrder(user,body){
+class OrderService {
+    static async createOrder(user, body) {
+        await OrdersModel.create({
+            userId: user,
+            consumerId: body.user,
+            items: body.items
+        });
 
-                            await OrdersModel.create({
-                                user,
-                                consumer:body.user,
-                                    items:body.items
-                            })
+        return {
+            msg: "Order Created Successfully"
+        };
+    }
 
-            return {
-                      msg:"Order Created Successfully"
-            }
+    static async getAllorders(user, page = 1, query = '') {
+        const limit = 10;
+        const offset = (Number(page) - 1) * limit;
 
-        }
-  static async getAllorders(user,page=1,query){
-    const limit =10
-    const perPage = (Number(page)-1)*limit
+        // For searching in JSON array items
+        const whereClause = {
+            userId: user
+        };
 
-
-    const queryies = {
-                        user,
-                        items:{
-                            $elemMatch: {
-                                name:{$regex:query,$options:'i'}
-                            }
-                        }
-                     }
-
-                     const data =        await OrdersModel.find(queryies)
-                                .populate("consumer","name email")
-                                .sort({"createdAt":-1})
-                                .limit(limit).skip(perPage)
-
-                    const documents = await OrdersModel.countDocuments(queryies);
-                     const hasMore= perPage+limit<documents
-
-            return {
-                data,
-                hasMore
-                
-            }
-
+        // If you need to search within items array
+        if (query) {
+            // SQLite JSON search - this is a workaround
+            // You might need to adjust based on your needs
+            whereClause.items = {
+                [Op.like]: `%${query}%`
+            };
         }
 
-
-         static async deleteOrder(user,id){
-     
-                const existOrder = await OrdersModel.findOne({user,_id:id})
-
-                if(!existOrder){
-                    throw new ApiError(httpStatus.NOT_FOUND,"Order Not Found");
-                    return 
+        const data = await OrdersModel.findAll({
+            where: whereClause,
+            include: [
+                {
+                    model: ConsumerModel,
+                    as: 'consumer',
+                    attributes: ['name', 'email']
                 }
+            ],
+            order: [['createdAt', 'DESC']],
+            limit,
+            offset
+        });
 
-                await OrdersModel.findByIdAndDelete(existOrder._id);
-                
+        const documents = await OrdersModel.count({ where: whereClause });
+        const hasMore = offset + limit < documents;
 
-            return {
-               msg:'Order Delete Successfully'
-                
-            }
+        return {
+            data,
+            hasMore
+        };
+    }
 
+    static async deleteOrder(user, id) {
+        const existOrder = await OrdersModel.findOne({
+            where: { userId: user, id }
+        });
+
+        if (!existOrder) {
+            throw new ApiError(httpStatus.NOT_FOUND, "Order Not Found");
         }
- static async getInvoiceById(user,id){
-     
-                const order = await OrdersModel.findOne({user,_id:id})
-                .select("consumer user items createdAt")
-                .populate("consumer","name email address -_id")
-                .populate("user","name -_id")
 
-                if(!order){
-                    throw new ApiError(httpStatus.NOT_FOUND,"Order Not Found");
-                    return 
+        await existOrder.destroy();
+
+        return {
+            msg: 'Order Delete Successfully'
+        };
+    }
+
+    static async getInvoiceById(user, id) {
+        const order = await OrdersModel.findOne({
+            where: { userId: user, id },
+            attributes: ['items', 'createdAt'],
+            include: [
+                {
+                    model: ConsumerModel,
+                    as: 'consumer',
+                    attributes: ['name', 'email', 'address']
+                },
+                {
+                    model: UserModel,
+                    as: 'user',
+                    attributes: ['name']
                 }
- 
-                
+            ]
+        });
 
-            return order
-
+        if (!order) {
+            throw new ApiError(httpStatus.NOT_FOUND, "Order Not Found");
         }
-        
 
-
-
-        
-
-        
+        return order;
+    }
 }
 
-module.exports = OrderService
+module.exports = OrderService;

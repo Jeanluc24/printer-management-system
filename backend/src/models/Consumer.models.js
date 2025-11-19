@@ -1,45 +1,48 @@
-const mongoose = require("mongoose")
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/db.config');
 
-const Schema = new mongoose.Schema({
-            user:{
-                type:mongoose.Schema.Types.ObjectId,
-                ref:'user',
-                required:true
-            }   ,    
-    name:{
-                type:String,
-                required:true,
-                trim:true
-            },
-            email:{
-                type:String,
-                required:true,
-                trim:true,
-                lower:true
-            },
-            mobile:{
-                type:String,
-                required:true,
-                trim:true
-            },
-            dob:{
-                type:Date,
-                required:true,
-                trim:true
-            },
-            address:{
-                type:String,
-                required:true,
-                trim:true
-            },
-            isActive:{
-                type:Boolean,
-                default:true
-            }
+const Consumer = sequelize.define('Consumer', {
+  id: {
+    type: DataTypes.INTEGER,
+    primaryKey: true,
+    autoIncrement: true
+  },
+  userId: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'users',
+      key: 'id'
+    },
+    field: 'user_id'
+  },
+  name: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  email: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  mobile: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  dob: {
+    type: DataTypes.DATE,
+    allowNull: false
+  },
+  address: {
+    type: DataTypes.STRING,
+    allowNull: false
+  },
+  isActive: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true
+  }
+}, {
+  tableName: 'consumers',
+  timestamps: true
+});
 
-},{timestamps:true})
-
-
-const model = mongoose.model("Consumer",Schema)
-
-module.exports = model
+module.exports = Consumer;

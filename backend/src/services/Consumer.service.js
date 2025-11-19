@@ -1,208 +1,150 @@
-const httpStatus = require("http-status")
-const { ConsumerModel, OrdersModel } = require("../models")
-const ApiError = require("../utils/ApiError")
-class ConsumerService{
+const httpStatus = require("http-status");
+const { ConsumerModel, OrdersModel } = require("../models");
+const ApiError = require("../utils/ApiError");
+const { Op } = require("sequelize");
 
+class ConsumerService {
+    static async RegisterConsumer(user, body) {
+        const { name, email, mobile, dob, address } = body;
 
-    static async RegisterConsumer(user,body){
-        
-        const {name,email,mobile,dob,address} = body
+        const checkExist = await ConsumerModel.findOne({
+            where: { email, userId: user }
+        });
 
-        const checkExist = await ConsumerModel.findOne({email:email,user:user});
-
-        if(checkExist){
-            throw new ApiError(httpStatus.BAD_REQUEST,"Consumer Already in Record");
-            return
+        if (checkExist) {
+            throw new ApiError(httpStatus.BAD_REQUEST, "Consumer Already in Record");
         }
 
-            await ConsumerModel.create({
-                name,email,mobile,dob,address,user
-            })
+        await ConsumerModel.create({
+            name, email, mobile, dob, address, userId: user
+        });
 
-            return {
-                msg:"Consumer Added :)"
-            }
-
-        
+        return {
+            msg: "Consumer Added :)"
+        };
     }
 
-    static async DeleteConsumer(user,id){
-         
+    static async DeleteConsumer(user, id) {
+        const checkExist = await ConsumerModel.findOne({
+            where: { id, userId: user }
+        });
 
-        const checkExist = await ConsumerModel.findOneAndDelete({_id:id,user:user});
-
-        if(!checkExist){
-            throw new ApiError(httpStatus.BAD_REQUEST,"Consumer Not Found in Record");
-            return
+        if (!checkExist) {
+            throw new ApiError(httpStatus.BAD_REQUEST, "Consumer Not Found in Record");
         }
 
-                await OrdersModel.deleteMany({consumer:id})
-                
+        await checkExist.destroy(); // Sequelize way to delete
+        await OrdersModel.destroy({ where: { consumerId: id } });
 
-            return {
-                msg:"Consumer Deleted :)"
-            }
-
-        
+        return {
+            msg: "Consumer Deleted :)"
+        };
     }
-    static async getById(user,id){
-         
 
-        const checkExist = await ConsumerModel.findOne({_id:id,user:user});
+    static async getById(user, id) {
+        const checkExist = await ConsumerModel.findOne({
+            where: { id, userId: user }
+        });
 
-        console.log({user,id});
+        console.log({ user, id });
 
-        if(!checkExist){
-            throw new ApiError(httpStatus.BAD_REQUEST,"Consumer Not Found in Record");
-            return
+        if (!checkExist) {
+            throw new ApiError(httpStatus.BAD_REQUEST, "Consumer Not Found in Record");
         }
 
-                
-
-            return {
-                user:checkExist
-            }
-
-        
+        return {
+            user: checkExist
+        };
     }
 
-    
+    static async GetAllUser(user, page = 1, query = '') {
+        const limit = 10;
+        const offset = (Number(page) - 1) * limit;
 
-    static async GetAllUser(user,page=1,query=''){
-            const limit = 10;
-                const skip = (Number(page)-1)*limit
+        const whereClause = {
+            userId: user,
+            [Op.or]: [
+                { name: { [Op.like]: `%${query}%` } },
+                { email: { [Op.like]: `%${query}%` } },
+                { address: { [Op.like]: `%${query}%` } },
+                { mobile: { [Op.like]: `%${query}%` } }
+            ]
+        };
 
-                const queryies = {
-                    user,
-                   $or:[
-                    {
-                         name: new RegExp(query)
-                    },
-                    {
-                         email: new RegExp(query)
-                    },
-                    {
-                         address: new RegExp(query)
-                    },
-                    {
-                         mobile: new RegExp(query)
-                    },
-                   ]
-                }
+        const data = await ConsumerModel.findAll({
+            where: whereClause,
+            attributes: ['name', 'email', 'mobile'],
+            offset,
+            limit
+        });
 
+        const totalConsumer = await ConsumerModel.count({ where: whereClause });
+        const hasMore = offset + limit < totalConsumer;
 
-       const data =  await ConsumerModel.find(queryies).select("name email mobile")
-                    .skip(skip)
-                    .limit(limit)
-       ;
-
-        //total document
-
-        const totalConsumer = await ConsumerModel.countDocuments(queryies)
-
-
-        //hasmore
-        const hasMore= skip+limit<totalConsumer
-
-
-            return {
-                users:data,
-                more:hasMore
-            }
-
-
-
-
+        return {
+            users: data,
+            more: hasMore
+        };
     }
-    
-    static async updateById(user,body,id){
-        
-        const {name,email,mobile,dob,address} = body
 
-        const checkExist = await ConsumerModel.findById({_id:id});
+    static async updateById(user, body, id) {
+        const { name, email, mobile, dob, address } = body;
 
-        if(checkExist.email !==email){
+        const checkExist = await ConsumerModel.findByPk(id);
 
-        const checkExistEmail = await ConsumerModel.findOne({email:email,user:user});
-
-        if(checkExistEmail){
-            throw new ApiError(httpStatus.BAD_REQUEST,"Consumer Email Already in Another Record ");
-            return
-        } 
+        if (!checkExist) {
+            throw new ApiError(httpStatus.BAD_REQUEST, "Consumer Not Found");
         }
 
-            await ConsumerModel.findByIdAndUpdate(id,{
-                name,email,mobile,dob,address,user
-            })
+        if (checkExist.email !== email) {
+            const checkExistEmail = await ConsumerModel.findOne({
+                where: { email, userId: user }
+            });
 
-            return {
-                msg:"Consumer Update :)"
+            if (checkExistEmail) {
+                throw new ApiError(httpStatus.BAD_REQUEST, "Consumer Email Already in Another Record");
             }
+        }
 
+        await ConsumerModel.update(
+            { name, email, mobile, dob, address },
+            { where: { id } }
+        );
+
+        return {
+            msg: "Consumer Update :)"
+        };
+    }
+
+    static async GetUserForSearch(user) {
+        const data = await ConsumerModel.findAll({
+            where: { userId: user },
+            attributes: ['name', 'dob']
+        });
+
+        return {
+            users: data
+        };
+    }
+
+    static async DashboardData(user) {
+        const consumers = await ConsumerModel.count({ where: { userId: user } });
         
+        const orders = await OrdersModel.findAll({
+            where: { userId: user },
+            attributes: ['items']
+        });
+
+        const arr = orders.map((order) => {
+            return order.items.map((item) => item.price);
+        });
+
+        return {
+            consumers,
+            orders: orders.length,
+            sell: arr.length > 0 ? arr.flat(2).reduce((a, c) => a + c, 0) : 0
+        };
     }
-
-     static async GetUserForSearch(user){ 
-
-                
-
-
-       const data =  await ConsumerModel.find({user}).select("name dob")
-                 
-       ;
-
-        //total document 
-
- 
-
-
-            return {
-                users:data 
-            }
-
-
-
-
-    }
-     static async DashboardData(user){ 
-
-                
-
-
-       const consumers =  await ConsumerModel.countDocuments({user})
-       const orders =  await OrdersModel.find({user}).select("items.price -_id") 
-                 
-       ;
-         const arr =await  orders.map((cur)=>{
-    // console.log();
-    return [...cur.items.map((c)=>c.price)]
-  })
-
-    //    let sale =0
-
-    //    for (let index = 0; index < array.length; index++) {
-    //     const element = array[index];
-        
-    //    }
-
-        //total document 
-
- 
-
-
-            return {
-                consumers,
-                 orders:orders.length,
-                 sell:arr.length>0 ?arr.flat(2).reduce((a,c)=>a+c):arr
-            }
-
-
-
-
-    }
-    
-
-    
 }
 
-module.exports = ConsumerService
+module.exports = ConsumerService;
