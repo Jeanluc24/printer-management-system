@@ -50,7 +50,7 @@ class AuthService {
     static async LoginUser(body) {
         const { email, password, token } = body;
 
-        const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, {}, {
+        /*const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, {}, {
             params: {
                 secret: process.env.CAPTCHA_SCREATE_KEY,
                 response: token,
@@ -61,7 +61,7 @@ class AuthService {
 
         if (!data.success) {
             throw new ApiError(httpStatus.BAD_REQUEST, "Captcha Not Valid");
-        }
+        }*/
 
         const checkExist = await UserModel.findOne({ where: { email } });
         if (!checkExist) {
